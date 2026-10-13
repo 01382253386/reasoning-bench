@@ -1,0 +1,15 @@
+# Held-out test set: never commit
+data/private/
+*.private.json
+
+# Secrets
+.env
+config/keys.yaml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Raw API logs may contain keys or large outputs; commit summaries only
+results/raw/
