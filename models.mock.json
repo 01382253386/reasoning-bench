@@ -1,0 +1,10 @@
+{
+  "_help": "Fake models with known behaviour, for testing the pipeline offline. No API keys needed.",
+  "models": [
+    {"id": "mock-oracle", "provider": "mock", "behavior": "oracle"},
+    {"id": "mock-never-flags", "provider": "mock", "behavior": "never_flags"},
+    {"id": "mock-always-flags", "provider": "mock", "behavior": "always_flags"},
+    {"id": "mock-noisy", "provider": "mock", "behavior": "noisy"},
+    {"id": "mock-complier", "provider": "mock", "behavior": "complier"}
+  ]
+}

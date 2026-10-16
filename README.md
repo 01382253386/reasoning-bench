@@ -10,7 +10,7 @@ Work in progress. v0.1 targets 5 tracks.
 
 | Track | Status |
 |---|---|
-| Assumption detection | Tier 1 and Tier 2 generators and public dev set ready; model runner next |
+| Assumption detection | Tier 1 and Tier 2 generators, scorer and model runner ready; first model results next |
 | Deduction | Not started |
 | Causal reasoning | Not started |
 | Counterfactual reasoning | Not started |
@@ -62,27 +62,42 @@ reasoning-bench/
     private/                         held-out set (git-ignored, never uploaded)
   docs/
     track_spec_template.md           template for new tracks
-  runner/                            model runner (coming)
-  results/                           raw logs and summary tables (coming)
+  runner/
+    run.py                           calls the models and logs every reply
+    scoring.py                       parses replies and scores them
+    report.py                        builds summary tables and failure examples
+  config/
+    models.example.json              template: which models to run
+    models.mock.json                 fake models for offline testing
+  results/                           summaries (raw logs are git-ignored)
 ```
 
 ## Reproduce
 
-The generators use only the Python standard library (3.8+), so there is nothing to install.
+Everything uses only the Python standard library (3.8+), so there is nothing to install.
+
+**Step 1: generate the questions.** Deterministic: the same seed always gives the same questions. The private held-out set is regenerated locally and never uploaded.
 
 ```
 python generators/assumption_detection.py
 python generators/assumption_detection_domain.py
 ```
 
-Both are deterministic: the same seed always produces the same questions. The private held-out set is regenerated locally from the seed and is never uploaded.
-
-The model runner comes next:
+**Step 2: test the pipeline offline** with fake models (no API keys needed):
 
 ```
-python runner/run.py --track assumption_detection --models config/models.yaml --runs 5
+python runner/run.py --models config/models.mock.json --runs 2 --out results/raw/mock
+python runner/report.py --raw results/raw/mock --out results/raw/mock_report
+```
+
+**Step 3: run real models.** Copy `config/models.example.json` to `config/models.json`, fill in the model names, and set each API key as an environment variable (keys are never stored in files):
+
+```
+python runner/run.py --models config/models.json --runs 5
 python runner/report.py
 ```
+
+The report writes `results/summary.md` (tables with confidence intervals), `results/failures.md` (concrete failure examples) and `results/scores.csv`. Raw logs go to `results/raw/` (git-ignored). Re-running `run.py` resumes: finished calls are skipped and failed calls are retried.
 
 ## Methodology
 
@@ -95,6 +110,8 @@ See each track's `SPEC.md`. A fuller `docs/methodology.md` will follow with the 
 - Public questions can leak into future training data; the private set reduces but does not remove this.
 - Scores depend on the prompt format; the exact prompts are logged.
 - Answer keys are verified by code, but a human should still read a sample of questions for fairness and realism.
+- "Named the right problem" is scored by keyword match, which is approximate. A judge-model rubric is planned.
+- The model adapters were tested against local fake servers and mock models, not yet against live provider APIs.
 
 ## Author
 
