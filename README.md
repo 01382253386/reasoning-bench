@@ -97,6 +97,15 @@ python runner/run.py --models config/models.json --runs 5
 python runner/report.py
 ```
 
+**Two prompt styles.** By default the model is told to check the scenario for problems (`--prompt-style flag`). Strong reasoning models usually ace this, because they are asked to look. The harder and more realistic test is `--prompt-style plain`: the model just gets the task, plus an optional "caveats" field, and we measure whether it volunteers the problem or confidently answers anyway. Use separate output folders for the two styles:
+
+```
+python runner/run.py --models config/models.json --runs 3 --prompt-style plain --out results/raw/plain
+python runner/report.py --raw results/raw/plain --out results/plain_report
+```
+
+In the plain style a problem counts as flagged when the model gives no answer or its caveats contain clear problem wording (contradiction, impossible, missing, not given...). This is approximate, so `failures.md` shows examples for you to check.
+
 The report writes `results/summary.md` (tables with confidence intervals), `results/failures.md` (concrete failure examples) and `results/scores.csv`. Raw logs go to `results/raw/` (git-ignored). Re-running `run.py` resumes: finished calls are skipped and failed calls are retried.
 
 ## Methodology
@@ -111,6 +120,8 @@ See each track's `SPEC.md`. A fuller `docs/methodology.md` will follow with the 
 - Scores depend on the prompt format; the exact prompts are logged.
 - Answer keys are verified by code, but a human should still read a sample of questions for fairness and realism.
 - "Named the right problem" is scored by keyword match, which is approximate. A judge-model rubric is planned.
+- In the plain prompt style, detection of a volunteered problem uses wording patterns in the caveats, which is approximate. A judge-model rubric is planned.
+- Free-tier APIs are rate-limited and sometimes overloaded; runs resume safely, so rerun the same command later.
 - The model adapters were tested against local fake servers and mock models, not yet against live provider APIs.
 
 ## Author

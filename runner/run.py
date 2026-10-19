@@ -20,6 +20,7 @@ Useful options:
     --only-model ID    only one model from the config
     --include-private  also run data/private (exists only where you ran the generators)
     --workers N        parallel calls (default 4)
+    --prompt-style S   flag (default: model is told to look for problems) or plain (no hint)
     --max-calls N      stop after N new calls per model (respects daily limits; run again tomorrow)
     --skip-missing-keys   skip models whose API key is not set instead of stopping
     --stop-after-errors N give up on a model after N failed calls in a row (default 8)
@@ -58,7 +59,7 @@ class ApiError(Exception):
 def http_post(url, headers, body, timeout=180):
     req = urllib.request.Request(
         url, data=json.dumps(body).encode("utf-8"), method="POST",
-        headers={"Content-Type": "application/json", **headers})
+        headers={"Content-Type": "application/json", "User-Agent": "reasoning-bench/0.1", **headers})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode("utf-8"))
@@ -144,7 +145,7 @@ def call_gemini(cfg, item):
             "model": r.get("modelVersion") or cfg["model"], "usage": r.get("usageMetadata")}
 
 
-def call_mock(cfg, item, run):
+def call_mock(cfg, item, run, style="flag"):
     """Fake model with a known behaviour, used to test the pipeline offline."""
     b = cfg.get("behavior", "oracle")
     h = int(hashlib.sha256(f"{cfg['id']}|{item['id']}|{run}".encode()).hexdigest(), 16)
@@ -166,6 +167,9 @@ def call_mock(cfg, item, run):
     fp = None
     if flag:
         fp = item["flaw_keywords"][0] if flaw else "something seems inconsistent"
+    if style == "plain":
+        cav = f"This is contradictory: {fp}" if flag else None
+        return {"text": json.dumps({"answer": ans, "caveats": cav}), "model": "mock", "usage": None}
     return {"text": json.dumps({"premise_problem": flag, "flawed_premise": fp, "answer": ans}),
             "model": "mock", "usage": None}
 
@@ -173,22 +177,23 @@ def call_mock(cfg, item, run):
 PROVIDERS = {"anthropic": call_anthropic, "openai": call_openai, "gemini": call_gemini}
 
 
-def dispatch(cfg, item, run):
+def dispatch(cfg, item, run, style="flag"):
     if cfg["provider"] == "mock":
-        return call_mock(cfg, item, run)
+        return call_mock(cfg, item, run, style)
     return with_retries(lambda: PROVIDERS[cfg["provider"]](cfg, item))
 
 
 # --------------------------------------------------------------------------
-def run_one(cfg, limiter, item, run):
+def run_one(cfg, limiter, style, item, run):
     limiter.wait()
     t0 = time.time()
+    item = dict(item, prompt=scoring.build_prompt(item, style))
     row = {"model_id": cfg["id"], "provider": cfg["provider"], "model_requested": cfg.get("model"),
-           "item_id": item["id"], "run": run, "temperature": cfg.get("temperature"),
+           "item_id": item["id"], "run": run, "style": style, "temperature": cfg.get("temperature"),
            "prompt_sha256": hashlib.sha256(item["prompt"].encode("utf-8")).hexdigest(),
            "ts": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     try:
-        res = dispatch(cfg, item, run)
+        res = dispatch(cfg, item, run, style)
         row.update(text=res["text"], model_returned=res.get("model"), usage=res.get("usage"), error=None)
     except Exception as e:  # keep going; failed calls are retried on the next run
         row.update(text=None, model_returned=None, usage=None, error=f"{type(e).__name__}: {e}"[:500])
@@ -222,6 +227,7 @@ def main():
     ap.add_argument("--include-private", action="store_true")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--max-calls", type=int, default=0)
+    ap.add_argument("--prompt-style", choices=scoring.STYLES, default="flag")
     ap.add_argument("--skip-missing-keys", action="store_true")
     ap.add_argument("--stop-after-errors", type=int, default=8)
     ap.add_argument("--dry-run", action="store_true")
@@ -277,7 +283,7 @@ def main():
         chunk = max(args.workers * 4, 8)
         with open(path, "a", encoding="utf-8") as f, cf.ThreadPoolExecutor(args.workers) as ex:
             for i in range(0, len(tasks), chunk):
-                for row in ex.map(lambda t: run_one(cfg, limiter, *t), tasks[i:i + chunk]):
+                for row in ex.map(lambda t: run_one(cfg, limiter, args.prompt_style, *t), tasks[i:i + chunk]):
                     f.write(json.dumps(row, ensure_ascii=False) + "\n")
                     f.flush()
                     n_done += 1

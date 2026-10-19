@@ -110,19 +110,21 @@ def load(raw_dir, data_dir):
                 if it is None:
                     unknown += 1
                     continue
-                s = scoring.score(it, scoring.parse_response(r["text"]))
+                style = r.get("style", "flag")
+                s = scoring.score(it, scoring.parse_for(it, r["text"], style))
                 rows.append({"model": r["model_id"], "model_returned": r.get("model_returned"),
                              "item_id": it["id"], "base_id": it["base_id"], "run": r["run"],
                              "tier": it.get("tier", 1), "domain": it.get("domain", "abstract"),
                              "subtype": it["subtype"], "difficulty": it["difficulty"],
                              "version": it["version"], "has_flaw": it["has_flaw"],
-                             "text": r["text"], "usage": r.get("usage"), "seconds": r.get("seconds"),
+                             "style": style, "text": r["text"], "usage": r.get("usage"), "seconds": r.get("seconds"),
                              "item": it, **s})
     return rows, errors, unknown
 
 
 def build_summary(rows, errors):
     models = sorted({r["model"] for r in rows})
+    styles = sorted({r["style"] for r in rows})
     L = ["# Results summary\n",
          f"Generated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}. "
          "Proportions show a 95% Wilson interval in brackets; question counts are small, so intervals are wide.\n",
@@ -131,6 +133,12 @@ def build_summary(rows, errors):
          "questions minus balanced score on the perturbed version. **repaired twin** = same scenario with "
          "the flaw fixed. **complied anyway** = flagged the problem but still gave a confident answer. "
          "**named it** = the flagged problem matches the planted one (keyword match, approximate).\n"]
+    if "plain" in styles:
+        L.append("**Prompt style \"plain\"** (rows from runs with `--prompt-style plain`): the model is NOT told to "
+                 "look for problems. \"Flagged\" means it volunteered one: it gave no answer, or its caveats contain "
+                 "clear problem wording (contradiction, impossible, missing, not given...). This detection is "
+                 "approximate; read the examples in failures.md to judge it.\n")
+    L.append("Prompt style in this report: " + ", ".join(styles) + ".\n")
 
     # 1 headline
     head = []
@@ -288,7 +296,7 @@ def build_failures(rows):
 
 def write_csv(rows, path):
     cols = ["model", "item_id", "base_id", "run", "tier", "domain", "subtype", "difficulty", "version",
-            "has_flaw", "parsed", "flagged", "detect_ok", "id_ok", "complied", "answer_ok"]
+            "has_flaw", "style", "parsed", "flagged", "detect_ok", "id_ok", "complied", "answer_ok"]
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(cols)

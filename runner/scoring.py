@@ -19,6 +19,41 @@ sys.path.insert(0, str(ROOT / "generators"))
 import assumption_detection as tier1  # noqa: E402
 import assumption_detection_domain as tier2  # noqa: E402
 
+STYLES = ("flag", "plain")
+
+# "plain" prompt: the model is NOT told to look for problems. It only gets an optional
+# free-text slot for caveats, like a normal assistant reply. This measures whether it
+# volunteers a problem, which is what happens in real use.
+PLAIN_WRAPPER = (
+    "Read the scenario and answer the question.\n\n"
+    "Respond with JSON only, in exactly this form:\n"
+    '{"answer": "your answer", "caveats": "anything the reader should know before relying '
+    'on this answer, or null"}\n\n'
+    "Scenario: <<SCENARIO>>\n\n"
+    "Question: <<QUESTION>>"
+)
+
+# Strict wording that signals a flagged problem in the caveats (approximate by design).
+FLAG_RE = re.compile(
+    r"contradict|inconsisten|conflict|impossible|not possible|cannot|can't|can not|unable to|"
+    r"insufficient|not enough|missing|not (been )?(given|provided|stated|specified|mentioned)|"
+    r"no information|unknown|unclear|ambiguous|add up|mismatch|incompatible|invalid|incorrect|"
+    r"\bfalse\b|no such|never |does not (say|state|specify|include)|doesn't (say|state|specify|include)",
+    re.I)
+
+NO_CAVEAT = {"", "null", "none", "n/a", "na", "no", "no caveats", "nothing", "-"}
+
+
+def build_prompt(item, style="flag"):
+    """The prompt a model sees. 'flag' is the stored prompt; 'plain' rebuilds it without the hint."""
+    if style == "flag":
+        return item["prompt"]
+    if style != "plain":
+        raise ValueError(f"unknown prompt style {style}")
+    scenario = " ".join(f["text"] for f in item["facts"])
+    return PLAIN_WRAPPER.replace("<<SCENARIO>>", scenario).replace("<<QUESTION>>", item["question"])
+
+
 NO_ANSWER = {"", "null", "none", "n/a", "na", "no answer", "cannot be answered",
              "unanswerable", "not answerable"}
 
@@ -61,6 +96,32 @@ def parse_response(text):
             return {"premise_problem": bool(pp),
                     "flawed_premise": obj.get("flawed_premise"),
                     "answer": obj.get("answer")}
+    return None
+
+
+def parse_for(item, text, style="flag"):
+    """Parse a reply into the common form {premise_problem, flawed_premise, answer}."""
+    if style == "flag":
+        return parse_response(text)
+    if not text:
+        return None
+    dec = json.JSONDecoder()
+    for m in re.finditer(r"\{", text):
+        try:
+            obj, _ = dec.raw_decode(text[m.start():])
+        except ValueError:
+            continue
+        if isinstance(obj, dict) and "answer" in obj:
+            ans = obj.get("answer")
+            cav = obj.get("caveats")
+            cav = None if cav is None else str(cav).strip()
+            if cav is not None and cav.lower().strip(" .") in NO_CAVEAT:
+                cav = None
+            unanswered = normalize_answer(ans) is None
+            flagged = unanswered or bool(cav and FLAG_RE.search(cav))
+            return {"premise_problem": flagged,
+                    "flawed_premise": cav or (str(ans) if unanswered and ans else None),
+                    "answer": ans}
     return None
 
 
