@@ -98,6 +98,16 @@ def load(raw_dir, data_dir):
     items = {i["id"]: i for i in scoring.load_items(scoring.dataset_paths(data_dir))}
     rows, errors, unknown = [], defaultdict(int), 0
     for f in sorted(Path(raw_dir).glob("*.jsonl")):
+        if f.name.endswith(".judged.jsonl"):
+            continue
+        judged = {}
+        jf = f.with_name(f.name + ".judged.jsonl")
+        if jf.exists():                      # verdicts from runner/judge.py (plain style)
+            with open(jf, encoding="utf-8") as jh:
+                for jl in jh:
+                    if jl.strip():
+                        j = json.loads(jl)
+                        judged[(j["item_id"], j["run"])] = j.get("judge")
         with open(f, encoding="utf-8") as fh:
             for line in fh:
                 if not line.strip():
@@ -111,7 +121,14 @@ def load(raw_dir, data_dir):
                     unknown += 1
                     continue
                 style = r.get("style", "flag")
-                s = scoring.score(it, scoring.parse_for(it, r["text"], style))
+                parsed = scoring.parse_for(it, r["text"], style)
+                verdict = judged.get((it["id"], r["run"]))
+                used_judge = style == "plain" and parsed is not None and verdict is not None
+                if used_judge:
+                    parsed = dict(parsed, premise_problem=bool(verdict))
+                s = scoring.score(it, parsed)
+                if used_judge and it["has_flaw"]:
+                    s["id_ok"] = bool(verdict)   # the judge saw the planted flaw
                 rows.append({"model": r["model_id"], "model_returned": r.get("model_returned"),
                              "item_id": it["id"], "base_id": it["base_id"], "run": r["run"],
                              "tier": it.get("tier", 1), "domain": it.get("domain", "abstract"),
@@ -135,9 +152,11 @@ def build_summary(rows, errors):
          "**named it** = the flagged problem matches the planted one (keyword match, approximate).\n"]
     if "plain" in styles:
         L.append("**Prompt style \"plain\"** (rows from runs with `--prompt-style plain`): the model is NOT told to "
-                 "look for problems. \"Flagged\" means it volunteered one: it gave no answer, or its caveats contain "
-                 "clear problem wording (contradiction, impossible, missing, not given...). This detection is "
-                 "approximate; read the examples in failures.md to judge it.\n")
+                 "look for problems. \"Flagged\" means it volunteered one. When a `.judged.jsonl` file from "
+                 "`runner/judge.py` sits next to the raw log, a judge model decided this (for flawed questions: did "
+                 "the reply name the planted flaw; for clean ones: did it wrongly claim a problem). Without it, a "
+                 "word-matching fallback is used, which undercounts. Judge verdicts are approximate; read the "
+                 "examples in failures.md.\n")
     L.append("Prompt style in this report: " + ", ".join(styles) + ".\n")
 
     # 1 headline

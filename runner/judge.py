@@ -1,8 +1,24 @@
-import argparse, collections, json, os, sys
+#!/usr/bin/env python3
+"""Second-opinion scoring: a judge model reads each reply and the planted flaw.
+
+Usage:
+    python runner/judge.py --raw results/raw/plain/groq-gpt-oss-120b.jsonl
+
+Needs GROQ_API_KEY (default judge: openai/gpt-oss-20b on Groq, a different model from the one
+being tested). Output: <raw>.judged.jsonl, resumable, plus a table by group.
+"""
+from __future__ import annotations
+
+import argparse
+import collections
+import json
+import os
+import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import run
-import scoring
+import run  # noqa: E402
+import scoring  # noqa: E402
 
 FLAWED = """A test question contained a hidden problem.
 Hidden problem ({subtype}): {planted}
@@ -29,6 +45,7 @@ Does the reply claim the scenario contains a contradiction, a false assumption, 
 information that makes the question wrong or unanswerable as posed? Ordinary clarifying notes
 (for example 'assuming X') do not count. Answer with JSON only: {{"claims_problem": true or false}}"""
 
+
 def reply_text(raw):
     try:
         i = raw.index("{")
@@ -36,6 +53,7 @@ def reply_text(raw):
         return "answer: %s | caveats: %s" % (obj.get("answer"), obj.get("caveats"))
     except Exception:
         return raw[:600]
+
 
 def ask(cfg, prompt):
     res = run.with_retries(lambda: run.call_openai(cfg, {"prompt": prompt}))
@@ -45,6 +63,7 @@ def ask(cfg, prompt):
         return bool(obj.get("names_the_flaw", obj.get("claims_problem")))
     except Exception:
         return None
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -71,9 +90,11 @@ def main():
                 continue
             it = items[r["item_id"]]
             scen = " ".join(x["text"] for x in it["facts"])
-            planted = " / ".join(x["text"] for x in it["facts"] if x["id"] in it["flaw_fact_ids"]) or "a fact needed to answer is missing from the scenario"
+            planted = " / ".join(x["text"] for x in it["facts"] if x["id"] in it["flaw_fact_ids"]) \
+                or "a fact needed to answer is missing from the scenario"
             tpl = FLAWED if it["has_flaw"] else CLEAN
-            p = tpl.format(subtype=it["subtype"], planted=planted, scenario=scen, question=it["question"], reply=reply_text(r["text"]))
+            p = tpl.format(subtype=it["subtype"], planted=planted, scenario=scen,
+                           question=it["question"], reply=reply_text(r["text"]))
             limiter.wait()
             try:
                 v = ask(cfg, p)
@@ -87,7 +108,8 @@ def main():
     tab = collections.defaultdict(lambda: [0, 0, 0])
     for (iid, _), r in done.items():
         it = items[iid]
-        g = "clean (false alarms)" if not it["has_flaw"] else ("flawed " + it["domain"] if it.get("tier") == 2 else "flawed tier1")
+        g = "clean (false alarms)" if not it["has_flaw"] else (
+            "flawed " + it["domain"] if it.get("tier") == 2 else "flawed tier1")
         if r["judge"] is None:
             tab[g][2] += 1
             continue
@@ -97,4 +119,6 @@ def main():
     for g, (n, k, u) in sorted(tab.items()):
         print("%-28s %5d %8.0f%% %8d" % (g, n, 100 * k / max(n, 1), u))
 
-main()
+
+if __name__ == "__main__":
+    main()

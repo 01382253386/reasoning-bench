@@ -35,6 +35,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import assumption_detection as base  # noqa: E402
+import assumption_detection_domain_b as batch_b  # noqa: E402
 from assumption_detection import (  # noqa: E402
     MONTHS, Spec, View, make_item, make_view, pick_distractors,
 )
@@ -508,6 +509,8 @@ TEMPLATES = [
     ("compliance", "missing_info", "training_deadline", core_training, gen_training),
 ]
 
+TEMPLATES = TEMPLATES + batch_b.TEMPLATES_B
+
 
 # --------------------------------------------------------------------------
 # Answer checking
@@ -644,6 +647,8 @@ def verify_template(it):
             dl = date.fromisoformat(cd["start"]) + timedelta(days=cd["days"])
             assert dl.isoformat() == cd["deadline"] == it["answer_check"]["iso"], iid
             assert ca == f"{dl.day} {MONTHS[dl.month - 1]} 2026", iid
+    elif t in batch_b.VERIFIERS:
+        batch_b.VERIFIERS[t](it)
     else:
         raise AssertionError(f"unknown template {t}")
 

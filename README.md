@@ -6,11 +6,11 @@ A small, reproducible benchmark that measures **specific reasoning abilities** o
 
 ## Status
 
-Work in progress. v0.1 targets 5 tracks.
+Work in progress. v0.1 targets 5 tracks. The assumption-detection track has 99 base scenarios (367 test items including variants); first results are for one free model only.
 
 | Track | Status |
 |---|---|
-| Assumption detection | Tier 1 and Tier 2 generators, scorer and model runner ready; first model results next |
+| Assumption detection | Generators, scorer, judge and runner ready; first model results in progress |
 | Deduction | Not started |
 | Causal reasoning | Not started |
 | Counterfactual reasoning | Not started |
@@ -31,19 +31,16 @@ The first track asks: does the model notice a hidden, false, or missing premise,
 
 **Tier 1: controlled puzzles.** Ages, schedules and number constraints. Small and clean, used as the baseline.
 
-**Tier 2: realistic business scenarios.** The same flaw types, written as documents a business would actually use:
+**Tier 2: realistic business scenarios.** The same flaw types, written as documents a business would actually use, based on mistakes that practitioner sources describe as common. 25 templates across four areas:
 
-| Domain | Example flaw |
+| Domain | Examples of the planted flaw |
 |---|---|
-| HR operations | A hiring plan needs more hires than the approved budget covers |
-| HR operations | A leave question assumes an entitlement the policy does not give |
-| Finance | A stated loan instalment does not match the loan terms |
-| Finance | A loan total is requested but no interest rate is given |
-| Project planning | Two concurrent tasks need more engineers than the team has |
-| Project planning | Tasks are assumed to run in parallel, but one depends on the other |
-| Compliance | Two policy clauses overlap and conflict |
-| Compliance | A deletion date is requested for an account that is still open |
-| Compliance | A training deadline is requested but the start date is missing |
+| HR operations | Hiring plan larger than the approved budget; a new starter given a full year's leave with no pro-rata; leave paid out before it is earned; carry-over assumed where the policy has none |
+| Finance | Stated loan instalment does not match the terms; profit confused with cash; a forecast with no baseline; channel margin ignored |
+| Project planning | One person booked at 130%; tasks assumed parallel but dependent; a deadline with zero slack; two tasks that wait for each other |
+| Compliance | Two clauses that conflict; a deadline counted from the wrong date; deletion asked for an account still open; a vendor assumed audited |
+
+The full list with sources is in [docs/methodology.md](docs/methodology.md).
 
 Scope note: Tier 2 tests whether a model catches inconsistencies in business documents and plans. It does not involve judging candidates or people.
 
@@ -57,18 +54,22 @@ reasoning-bench/
   generators/
     assumption_detection.py          Tier 1 generator
     assumption_detection_domain.py   Tier 2 generator
+    assumption_detection_domain_b.py Tier 2 extra templates (imported by the one above)
   data/
     public/                          published dev sets (.jsonl)
     private/                         held-out set (git-ignored, never uploaded)
   docs/
+    methodology.md                   design principles, sources, limitations
     track_spec_template.md           template for new tracks
   runner/
     run.py                           calls the models and logs every reply
     scoring.py                       parses replies and scores them
     report.py                        builds summary tables and failure examples
+    judge.py                         judge-model check of plain-style replies
   config/
     models.example.json              template: which models to run
     models.mock.json                 fake models for offline testing
+    models.free.json                 free-tier models (Z.ai GLM, Groq, Gemini)
   results/                           summaries (raw logs are git-ignored)
 ```
 
@@ -108,9 +109,27 @@ In the plain style a problem counts as flagged when the model gives no answer or
 
 The report writes `results/summary.md` (tables with confidence intervals), `results/failures.md` (concrete failure examples) and `results/scores.csv`. Raw logs go to `results/raw/` (git-ignored). Re-running `run.py` resumes: finished calls are skipped and failed calls are retried.
 
+## Try it in 5 minutes
+
+No installation on your computer is needed. You can use GitHub Codespaces (a browser-based computer) and any API key you already have, free or paid.
+
+1. On this page click the green **Code** button, then **Codespaces**, then **Create codespace**. Wait until a terminal appears at the bottom.
+2. In the terminal, set one API key. For example, for a free Groq key (create one at console.groq.com):
+   ```
+   export GROQ_API_KEY="paste-your-key-here"
+   ```
+3. Run a small test, 12 questions of the harder plain style:
+   ```
+   python runner/run.py --models config/models.free.json --only-model groq-gpt-oss-120b --prompt-style plain --limit 12 --runs 1 --out results/raw/try
+   python runner/report.py --raw results/raw/try --out results/try_report
+   ```
+4. Open `results/try_report/summary.md` for the tables and `failures.md` for real examples of what the model missed.
+
+To use a paid model, copy `config/models.example.json`, put in the model name, and export that provider's key. A full run of one model costs well under a few dollars at current prices for most models; check your provider's pricing first. Please share what you find by opening an issue, and say which model and prompt style you used.
+
 ## Methodology
 
-See each track's `SPEC.md`. A fuller `docs/methodology.md` will follow with the first results.
+See [docs/methodology.md](docs/methodology.md) for design principles, the sources behind the business scenarios and how replies are scored, and each track's `SPEC.md` for the details of that track.
 
 ## Limitations
 
@@ -119,10 +138,11 @@ See each track's `SPEC.md`. A fuller `docs/methodology.md` will follow with the 
 - Public questions can leak into future training data; the private set reduces but does not remove this.
 - Scores depend on the prompt format; the exact prompts are logged.
 - Answer keys are verified by code, but a human should still read a sample of questions for fairness and realism.
-- "Named the right problem" is scored by keyword match, which is approximate. A judge-model rubric is planned.
-- In the plain prompt style, detection of a volunteered problem uses wording patterns in the caveats, which is approximate. A judge-model rubric is planned.
+- In the flag style, "named the right problem" is a keyword match and is approximate.
+- In the plain style a judge model (`runner/judge.py`) decides whether a reply names the planted flaw. The judge is itself an AI model, was checked by hand on a small sample only, and can be too strict or too lenient. The older word-matching detector in `report.py` undercounts and should not be used for plain-style claims.
+- No independent human has yet reviewed the scenarios for realism or ambiguity.
 - Free-tier APIs are rate-limited and sometimes overloaded; runs resume safely, so rerun the same command later.
-- The model adapters were tested against local fake servers and mock models, not yet against live provider APIs.
+- The runner has been tested live on Groq and Z.ai free tiers and offline with mock models; other providers' adapters are less tested.
 
 ## Author
 
