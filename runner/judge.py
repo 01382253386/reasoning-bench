@@ -31,7 +31,9 @@ An AI replied:
 
 Does the reply explicitly point out THIS specific problem (for example by saying the premise is
 wrong, the numbers do not work, or the needed information is missing)? A generic hedge, or a note
-about something else, does not count. Answer with JSON only: {{"names_the_flaw": true or false}}"""
+about something else, does not count. Noticing the problem but saying it can be ignored does not count.
+A reply whose answer itself corrects the false premise (for example answering 0 or none and explaining
+that the policy gives nothing) does count. Answer with JSON only: {{"names_the_flaw": true or false}}"""
 
 CLEAN = """Here is a scenario and question. The scenario is consistent and has everything needed.
 
