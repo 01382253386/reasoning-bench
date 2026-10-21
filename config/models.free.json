@@ -1,15 +1,64 @@
 {
   "_help": "Free-tier models for a first pass. Keys are NOT stored here: api_key_env is the NAME of an environment variable. Model names and limits change often; if a model errors with 'not found', check the provider's model list and edit the name. rpm = max requests per minute (the runner spaces calls to stay under it). Run with --workers 1 and --max-calls to respect daily limits; run the same command again the next day to resume.",
   "models": [
-    {"id": "glm-4.7-flash", "provider": "openai", "base_url": "https://api.z.ai/api/paas/v4",
-     "model": "glm-4.7-flash", "api_key_env": "ZAI_API_KEY", "temperature": 1.0, "max_tokens": 1024, "rpm": 20, "extra_body": {"thinking": {"type": "disabled"}}},
-    {"id": "glm-4.5-flash", "provider": "openai", "base_url": "https://api.z.ai/api/paas/v4",
-     "model": "glm-4.5-flash", "api_key_env": "ZAI_API_KEY", "temperature": 1.0, "max_tokens": 1024, "rpm": 20, "extra_body": {"thinking": {"type": "disabled"}}},
-    {"id": "groq-qwen3.8-27b", "provider": "openai", "base_url": "https://api.groq.com/openai/v1",
-     "model": "qwen/qwen3.8-27b", "api_key_env": "GROQ_API_KEY", "temperature": 1.0, "max_tokens": 2048, "rpm": 20},
-    {"id": "groq-gpt-oss-120b", "provider": "openai", "base_url": "https://api.groq.com/openai/v1",
-     "model": "openai/gpt-oss-120b", "api_key_env": "GROQ_API_KEY", "temperature": 1.0, "max_tokens": 3000, "rpm": 8},
-    {"id": "gemini-flash-lite", "provider": "gemini",
-     "model": "gemini-3.5-flash-lite", "api_key_env": "GEMINI_API_KEY", "temperature": 1.0, "max_tokens": 4096, "rpm": 10}
+    {
+      "id": "glm-4.7-flash",
+      "provider": "openai",
+      "base_url": "https://api.z.ai/api/paas/v4",
+      "model": "glm-4.7-flash",
+      "api_key_env": "ZAI_API_KEY",
+      "temperature": 1.0,
+      "max_tokens": 1024,
+      "rpm": 20,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      }
+    },
+    {
+      "id": "glm-4.5-flash",
+      "provider": "openai",
+      "base_url": "https://api.z.ai/api/paas/v4",
+      "model": "glm-4.5-flash",
+      "api_key_env": "ZAI_API_KEY",
+      "temperature": 1.0,
+      "max_tokens": 1024,
+      "rpm": 20,
+      "extra_body": {
+        "thinking": {
+          "type": "disabled"
+        }
+      }
+    },
+    {
+      "id": "groq-qwen3.8-27b",
+      "provider": "openai",
+      "base_url": "https://api.groq.com/openai/v1",
+      "model": "qwen/qwen3.8-27b",
+      "api_key_env": "GROQ_API_KEY",
+      "temperature": 1.0,
+      "max_tokens": 3000,
+      "rpm": 20
+    },
+    {
+      "id": "groq-gpt-oss-120b",
+      "provider": "openai",
+      "base_url": "https://api.groq.com/openai/v1",
+      "model": "openai/gpt-oss-120b",
+      "api_key_env": "GROQ_API_KEY",
+      "temperature": 1.0,
+      "max_tokens": 3000,
+      "rpm": 8
+    },
+    {
+      "id": "gemini-flash-lite",
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "api_key_env": "GEMINI_API_KEY",
+      "temperature": 1.0,
+      "max_tokens": 4096,
+      "rpm": 10
+    }
   ]
 }
