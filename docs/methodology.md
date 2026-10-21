@@ -49,13 +49,14 @@ These follow common advice on keeping benchmarks reliable (fresh questions, chec
 | Answers checked by code, not opinion | Every key is recomputed by a separate verifier; builds fail if any check fails | Done |
 | Control for "flag everything" | Every flawed question has a repaired twin; false alarms are reported | Done |
 | Robustness | Each question comes in original, surface-changed and distractor versions | Done |
-| Held-out data | 30% of scenarios are private and never published | Done |
+| Held-out data | 30% of scenarios are generated separately with a secret seed and never published; only a SHA-256 fingerprint is public so the set can be verified when revealed | Done; not yet used for published results |
 | Uncertainty shown | 95% Wilson intervals on every proportion | Done |
 | Reproducible | Fixed seed, logged prompts, one command per step, standard library only | Done |
 | Scoring of the reply | Flag-style uses the model's own boolean; plain-style uses a judge model that sees the planted flaw (`runner/judge.py`) | Judge checked by hand on a sample only |
 | Size | 99 base scenarios, 367 items including variants | Small |
 | Variety | 25 business templates, 3 scenarios each | Limited, templated wording |
 | Human review | Not yet done | Needed |
+| Human baseline | A short form with 12 of the public scenarios is planned | Not yet done |
 | Saturation watch | Easy templates may be caught by strong models; results by template will show which | Pending more models |
 
 ## Prompt styles

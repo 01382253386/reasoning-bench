@@ -12,7 +12,8 @@ Output (JSON Lines):
     data/public/assumption_detection.jsonl    published dev set
     data/private/assumption_detection.jsonl   held-out set (git-ignored, never upload)
 
-Same seed -> identical output, so the private set can always be regenerated locally.
+Same seed -> identical output. By default only the PUBLIC split is written. The private set is
+written only when a secret seed is given (--private-seed N), so it cannot be rebuilt by outsiders.
 
 Versions produced per base item:
     original    the question as generated
@@ -23,8 +24,10 @@ Versions produced per base item:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import itertools
 import json
+import os
 import random
 import re
 from dataclasses import dataclass, field, replace
@@ -536,27 +539,66 @@ def verify(items):
                 assert not g["has_flaw"], base_id
 
 
+def write_outputs(items, out, filename, private_seed):
+    """Write one generator's output.
+
+    Public mode (no secret seed): only the public split is written, so anyone can reproduce it.
+    Private mode (secret seed): only the private split is written, ids get a 'p' marker so they never
+    clash with public ids, and a SHA-256 fingerprint is recorded in <out>/private_fingerprints.txt.
+    The fingerprint can be published now and checked against the file when the private set is revealed.
+    The secret seed itself is never written anywhere.
+    """
+    split = "public" if private_seed is None else "private"
+    rows = [it for it in items if it["split"] == split]
+    if split == "private":
+        for it in rows:
+            for k in ("id", "base_id"):
+                it[k] = re.sub(r"^(ad2?)-", r"\1p-", it[k])
+    folder = Path(out) / split
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / filename
+    with open(path, "w", encoding="utf-8") as f:
+        for it in rows:
+            f.write(json.dumps(it, ensure_ascii=False) + "\n")
+    bases = len({it["base_id"] for it in rows})
+    print(f"{split:8s} {len(rows):3d} items from {bases:2d} base questions -> {path}")
+    if split == "private":
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        fp = Path(out) / "private_fingerprints.txt"
+        lines = {}
+        if fp.exists():
+            for ln in fp.read_text().splitlines():
+                if ln.strip():
+                    lines[ln.split()[0]] = ln
+        lines[filename] = f"{filename}  sha256={digest}  items={len(rows)}  base_questions={bases}"
+        fp.write_text("\n".join(lines[k] for k in sorted(lines)) + "\n")
+        print(f"fingerprint {digest}")
+    return rows
+
+
+def resolve_seeds(args):
+    """Return (seed used for building, private_seed or None). Refuses a private seed equal to the public one."""
+    env = os.environ.get("REASONING_BENCH_PRIVATE_SEED")
+    ps = args.private_seed if args.private_seed is not None else (int(env) if env else None)
+    if ps is not None and ps == args.seed:
+        raise SystemExit("The private seed must differ from the public seed.")
+    return (ps if ps is not None else args.seed), ps
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--seed", type=int, default=1234)
+    ap.add_argument("--private-seed", type=int, default=None,
+                    help="SECRET seed for the held-out set (or env REASONING_BENCH_PRIVATE_SEED). Never publish it.")
     ap.add_argument("--out", default=None, help="output folder (default: <repo>/data)")
     args = ap.parse_args()
 
     out = Path(args.out) if args.out else Path(__file__).resolve().parent.parent / "data"
-    items = build_all(args.seed)
+    build_seed, private_seed = resolve_seeds(args)
+    items = build_all(build_seed)
     verify(items)
-
-    for split in ("public", "private"):
-        folder = out / split
-        folder.mkdir(parents=True, exist_ok=True)
-        rows = [it for it in items if it["split"] == split]
-        path = folder / f"{TRACK}.jsonl"
-        with open(path, "w", encoding="utf-8") as f:
-            for it in rows:
-                f.write(json.dumps(it, ensure_ascii=False) + "\n")
-        bases = len({it["base_id"] for it in rows})
-        print(f"{split:8s} {len(rows):3d} items from {bases:2d} base questions -> {path}")
-    print(f"total {len(items)} items; all self-checks passed")
+    write_outputs(items, out, f"{TRACK}.jsonl", private_seed)
+    print(f"{len(items)} items built; all self-checks passed")
 
 
 if __name__ == "__main__":

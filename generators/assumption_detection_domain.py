@@ -17,7 +17,7 @@ Output (JSON Lines):
     data/public/assumption_detection_domain.jsonl
     data/private/assumption_detection_domain.jsonl   (git-ignored, never upload)
 
-Same seed -> identical output.
+Same seed -> identical output. Only the public split is written unless --private-seed is given.
 
 Scope note: these scenarios test whether a model notices inconsistencies in business
 documents and plans. They deliberately do NOT involve judging candidates or people.
@@ -694,28 +694,17 @@ def verify(items):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--seed", type=int, default=1234)
+    ap.add_argument("--private-seed", type=int, default=None,
+                    help="SECRET seed for the held-out set (or env REASONING_BENCH_PRIVATE_SEED). Never publish it.")
     ap.add_argument("--out", default=None, help="output folder (default: <repo>/data)")
     args = ap.parse_args()
 
     out = Path(args.out) if args.out else Path(__file__).resolve().parent.parent / "data"
-    items = build_all(args.seed)
+    build_seed, private_seed = base.resolve_seeds(args)
+    items = build_all(build_seed)
     verify(items)
-
-    name = f"{TRACK}_domain.jsonl"
-    for split in ("public", "private"):
-        folder = out / split
-        folder.mkdir(parents=True, exist_ok=True)
-        rows = [it for it in items if it["split"] == split]
-        with open(folder / name, "w", encoding="utf-8") as f:
-            for it in rows:
-                f.write(json.dumps(it, ensure_ascii=False) + "\n")
-        doms = {}
-        for it in rows:
-            doms.setdefault(it["domain"], set()).add(it["base_id"])
-        per = ", ".join(f"{d}={len(b)}" for d, b in sorted(doms.items()))
-        print(f"{split:8s} {len(rows):3d} items from {len({it['base_id'] for it in rows}):2d} "
-              f"base questions ({per}) -> {folder / name}")
-    print(f"total {len(items)} items; all self-checks passed")
+    base.write_outputs(items, out, f"{TRACK}_domain.jsonl", private_seed)
+    print(f"{len(items)} items built; all self-checks passed")
 
 
 if __name__ == "__main__":
