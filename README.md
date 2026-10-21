@@ -6,7 +6,7 @@ A small, reproducible benchmark that measures **specific reasoning abilities** o
 
 ## Status
 
-Work in progress. v0.1 targets 5 tracks. The assumption-detection track has 99 base scenarios (71 public, 28 held out). The public set has 265 test items including variants. First results below are for two free models.
+Work in progress. v0.1 targets 5 tracks. The assumption-detection track has 99 base scenarios (71 public, 28 held out). The public set has 265 test items including variants. First results below are for three free models.
 
 | Track | Status |
 |---|---|
@@ -29,22 +29,22 @@ Work in progress. v0.1 targets 5 tracks. The assumption-detection track has 99 b
 
 Assumption detection, **plain prompt** (the model is not told to look for problems), 265 public items, one run per model, scored by a judge model that sees the planted flaw. All numbers are the share of flawed questions where the reply named the planted flaw, except the last row.
 
-| Group | GPT OSS 120B | Qwen3.8 27B |
-|---|---|---|
-| **All flawed questions** | **85%** (n=155) | **71%** (n=156) |
-| HR operations | 61% | 47% |
-| Finance | 100% | 88% |
-| Project planning | 88% | 81% |
-| Compliance | 91% | 75% |
-| Tier 1 puzzles | 90% | 71% |
-| False alarms on clean questions (lower is better) | 0% (n=105) | 2% (n=109) |
+| Group | GPT OSS 120B | Qwen3.8 27B | Gemini 3.5 Flash-Lite |
+|---|---|---|---|
+| **All flawed questions** | **85%** (n=155) | **71%** (n=156) | **83%** (n=156) |
+| HR operations | 61% | 47% | 86% |
+| Finance | 100% | 88% | 93% |
+| Project planning | 88% | 81% | 78% |
+| Compliance | 91% | 75% | 88% |
+| Tier 1 puzzles | 90% | 71% | 76% |
+| False alarms on clean questions (lower is better) | 0% (n=105) | 2% (n=109) | 1% (n=109) |
 
 What this does and does not show:
-- Both models are weakest on HR scenarios.
-- The larger model scored higher in every group, but the models differ in size and family, so this is not a ranking of providers.
-- With about 155 questions per model, differences of a few points are not meaningful; a gap like 85% vs 71% probably is.
+- GPT OSS 120B and Gemini 3.5 Flash-Lite are statistically tied overall (85% vs 83%); both are ahead of Qwen3.8 27B (71%). With about 155 questions and one run each, the margin of error is roughly 6 points.
+- The weakest group differs by model: HR for GPT OSS 120B and Qwen3.8 27B, but not for Gemini 3.5 Flash-Lite (86% on HR). So these results do not show that models are weak at HR in general; they show how each model did on our specific HR templates, some of which are subtler than the finance ones.
+- Many templates are still too easy (GPT OSS 120B caught 19 of 25 business templates every time), so scores above 80% mean "good on easy questions", not "strong reasoning".
 - One run per model; the judge is itself an AI model and was checked by hand on a small sample only. See Limitations.
-- Both models were run through Groq's free tier on 20 October 2026. Results will differ on other models and providers; please run yours and share it.
+- Runs were made on free tiers (Groq and Google) in October 2026. Results will differ on other models and providers; please run yours and share it.
 
 Full tables are in `results/v2_report/summary.md`.
 
