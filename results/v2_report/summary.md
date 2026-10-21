@@ -1,6 +1,6 @@
 # Results summary
 
-Generated 2026-10-21 04:54 UTC. Proportions show a 95% Wilson interval in brackets; question counts are small, so intervals are wide.
+Generated 2026-10-21 10:56 UTC. Proportions show a 95% Wilson interval in brackets; question counts are small, so intervals are wide.
 
 Definitions: **sensitivity** = flagged a problem when there was one. **specificity** = did not flag when there was none. **balanced** = mean of the two. **gap** = balanced score on original questions minus balanced score on the perturbed version. **repaired twin** = same scenario with the flaw fixed. **complied anyway** = flagged the problem but still gave a confident answer. **named it** = the flagged problem matches the planted one (keyword match, approximate).
 
@@ -12,6 +12,7 @@ Prompt style in this report: plain.
 
 | model | calls | failed calls | valid replies | sensitivity (original) | specificity (original) | balanced original | balanced surface | balanced distractor | gap surface | gap distractor | repaired twins correct | tokens per call | seconds per call | runs |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| gemini-flash-lite | 265 | 0 | 99% | 85% [72-92] | 100% [83-100] | 92% | 91% | 88% | +2 pts | +5 pts | 100% [93-100] | 201 | 1.2 | 1 |
 | groq-gpt-oss-120b | 265 | 0 | 100% | 90% [79-96] | 100% [83-100] | 95% | 85% | 94% | +10 pts | +1 pts | 100% [93-100] | 459 | 0.9 | 1 |
 | groq-qwen3.8-27b | 265 | 2 | 97% | 71% [58-82] | 84% [62-94] | 78% | 83% | 84% | -5 pts | -6 pts | 94% [84-98] | 287 | 4.9 | 1 |
 
@@ -19,6 +20,7 @@ Prompt style in this report: plain.
 
 | model | missed the flaw | complied anyway | named it | false alarms on clean | clean answers correct |
 |---|---|---|---|---|---|
+| gemini-flash-lite | 18% [13-25] | 96% [91-98] | 100% [97-100] | 1% [0-5] | 95% [90-98] |
 | groq-gpt-oss-120b | 15% [11-22] | 98% [94-99] | 100% [97-100] | 1% [0-5] | 97% [92-99] |
 | groq-qwen3.8-27b | 30% [23-38] | 97% [92-99] | 100% [97-100] | 3% [1-8] | 84% [76-90] |
 
@@ -26,6 +28,7 @@ Prompt style in this report: plain.
 
 | model | runs | accuracy per run (mean ± std) | questions answered the same way in every run |
 |---|---|---|---|
+| gemini-flash-lite | 1 | 89.1% ± 0.0 | n/a |
 | groq-gpt-oss-120b | 1 | 90.6% ± 0.0 | n/a |
 | groq-qwen3.8-27b | 1 | 79.6% ± 0.0 | n/a |
 
@@ -33,6 +36,8 @@ Prompt style in this report: plain.
 
 | model | tier | sensitivity | specificity |
 |---|---|---|---|
+| gemini-flash-lite | tier 1 | 76% [61-87] | 100% [86-100] |
+| gemini-flash-lite | tier 2 | 84% [76-90] | 99% [94-100] |
 | groq-gpt-oss-120b | tier 1 | 90% [78-96] | 100% [86-100] |
 | groq-gpt-oss-120b | tier 2 | 82% [74-88] | 99% [94-100] |
 | groq-qwen3.8-27b | tier 1 | 71% [56-83] | 91% [73-98] |
@@ -42,6 +47,11 @@ Prompt style in this report: plain.
 
 | model | domain | sensitivity | specificity |
 |---|---|---|---|
+| gemini-flash-lite | abstract | 76% [61-87] | 100% [86-100] |
+| gemini-flash-lite | compliance | 83% [64-93] | 96% [79-99] |
+| gemini-flash-lite | finance | 89% [72-96] | 100% [85-100] |
+| gemini-flash-lite | hr_operations | 86% [71-94] | 100% [85-100] |
+| gemini-flash-lite | project_planning | 78% [59-89] | 100% [85-100] |
 | groq-gpt-oss-120b | abstract | 90% [78-96] | 100% [86-100] |
 | groq-gpt-oss-120b | compliance | 88% [69-96] | 96% [79-99] |
 | groq-gpt-oss-120b | finance | 100% [88-100] | 100% [85-100] |
@@ -57,6 +67,12 @@ Prompt style in this report: plain.
 
 | model | flaw type | sensitivity | specificity |
 |---|---|---|---|
+| gemini-flash-lite | clean_control | n/a | 98% [91-100] |
+| gemini-flash-lite | contradictory_facts | 64% [47-78] | 100% [74-100] |
+| gemini-flash-lite | false_presupposition | 97% [86-100] | 100% [76-100] |
+| gemini-flash-lite | hidden_dependency | 60% [36-80] | 100% [57-100] |
+| gemini-flash-lite | impossible_constraint | 79% [60-91] | 100% [68-100] |
+| gemini-flash-lite | missing_info | 92% [80-97] | 100% [81-100] |
 | groq-gpt-oss-120b | clean_control | n/a | 98% [91-100] |
 | groq-gpt-oss-120b | contradictory_facts | 85% [69-93] | 100% [74-100] |
 | groq-gpt-oss-120b | false_presupposition | 75% [59-86] | 100% [76-100] |

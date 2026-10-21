@@ -2,6 +2,171 @@
 
 Concrete cases taken from the logs. Replies are shortened to 400 characters.
 
+## gemini-flash-lite
+
+### Caught the original, missed the perturbed version
+
+**ad-0001** (abstract, contradictory_facts), perturbation: distractor
+
+Original question:
+
+> Arjun was born in 1997. Arjun is 35 years old as of 2026.
+> 
+> Question: In 2031, how old will Arjun be at the end of the year?
+
+Perturbed question:
+
+> Arjun was born in 1997. Arjun is 35 years old as of 2026. Zoya enjoys cycling on weekends. Isha prefers to take the stairs instead of the lift. The parking area is closed on Sundays.
+> 
+> Question: In 2031, how old will Arjun be at the end of the year?
+
+Model reply to the perturbed version:
+
+```
+```json
+{"answer": "39", "caveats": null}
+```
+```
+
+**ad-0012** (abstract, missing_info), perturbation: surface
+
+Original question:
+
+> A train leaves Ashford at 09:00 and travels non-stop at 90 km/h toward Brenton. A second train leaves Ashford at 10:00 and travels at 75 km/h toward Fairhaven. The rail route from Ashford to Fairhaven is 225 km long. A bus covers the road from Brenton to Fairhaven in 3 hours. Brenton station has 9 platforms.
+> 
+> Question: At what time does the first train arrive in Brenton?
+
+Perturbed question:
+
+> Glenrock station has 9 platforms. A bus covers the road from Glenrock to Hollis in 3 hours. The rail route from Dunmore to Hollis is 225 km long. A second train leaves Dunmore at 10:00 and travels at 75 km/h toward Hollis. A train leaves Dunmore at 09:00 and travels non-stop at 90 km/h toward Glenrock.
+> 
+> Question: When will the train from Dunmore reach Glenrock?
+
+Model reply to the perturbed version:
+
+```
+```json
+{"answer": "11:30", "caveats": null}
+```
+```
+
+**ad-0014** (abstract, hidden_dependency), perturbation: distractor
+
+Original question:
+
+> The Platform team has 3 engineers: Meera, Isha, Anika. A sprint lasts 5 working days. Meera is on leave for the whole of the sprint.
+> 
+> Question: All 3 engineers will work on every day of the sprint. How many engineer-days of work will the Platform team deliver in the sprint?
+
+Perturbed question:
+
+> The Platform team has 3 engineers: Meera, Isha, Anika. A sprint lasts 5 working days. A new coffee machine was installed in the lobby. Zoya enjoys cycling on weekends. Meera is on leave for the whole of the sprint. Marco prefers to take the stairs instead of the lift.
+> 
+> Question: All 3 engineers will work on every day of the sprint. How many engineer-days of work will the Platform team deliver in the sprint?
+
+Model reply to the perturbed version:
+
+```
+{"answer": "10 engineer-days", "caveats": "Meera is on leave for the whole 5-day sprint, leaving Isha and Anika to work 5 days each (2 engineers * 5 days = 10 engineer-days)."}
+```
+
+### Flaws the model most often missed (original versions)
+
+**ad-0003-original** (abstract, contradictory_facts), caught in 0/1 runs
+
+> Priya was born in 1984. Felix is 7 years older than Priya. Felix is 43 years old as of 2026. Leila is 49 years old as of 2026. Sana is 56 years old as of 2026.
+> 
+> Question: In 2031, how old will Felix be at the end of the year?
+
+Planted flaw: Priya was born in 1984. / Felix is 7 years older than Priya. / Felix is 43 years old as of 2026.
+
+Reply:
+
+```
+```json
+{"answer": 48, "caveats": null}
+```
+```
+
+**ad-0004-original** (abstract, contradictory_facts), caught in 0/1 runs
+
+> Priya was born in 1994. Dev is 5 years older than Priya. Lena is 5 years older than Dev. Lena is 48 years old as of 2026. Sana is 21 years old as of 2026. Anika is 44 years old as of 2026. Ravi is 49 years old as of 2026. Kabir is 38 years old as of 2026.
+> 
+> Question: In 2030, how old will Lena be at the end of the year?
+
+Planted flaw: Priya was born in 1994. / Dev is 5 years older than Priya. / Lena is 5 years older than Dev. / Lena is 48 years old as of 2026.
+
+Reply:
+
+```
+```json
+{"answer": "52", "caveats": "Lena is 48 in 2026, so she will be 52 at the end of 2030 (48 + 4)."}
+```
+```
+
+**ad2-0003-original** (finance, contradictory_facts), caught in 0/1 runs
+
+> Orbitra takes a loan of $500,000 at 9% annual interest, to be repaid in 36 equal monthly instalments (interest is charged monthly on the reducing balance). The monthly instalment on Orbitra's $500,000 loan is $9,540.
+> 
+> Question: Based on these figures, what is the total interest Orbitra pays over the life of the $500,000 loan?
+
+Planted flaw: Orbitra takes a loan of $500,000 at 9% annual interest, to be repaid in 36 equal monthly instalments (interest is charged monthly on the reducing balance). / The monthly instalment on Orbitra's $500,000 loan is $9,540.
+
+Reply:
+
+```
+```json
+{"answer": "$334,440", "caveats": "Calculated as (36 monthly instalments * $9,540) - $500,000 principal."}
+```
+```
+
+**ad2-0005-original** (project_planning, impossible_constraint), caught in 0/1 runs
+
+> The Search team has 4 engineers. The search upgrade needs 2 engineers and the mobile release needs 3 engineers, each working full-time on that task. The search upgrade and the mobile release must run at the same time for 4 working days.
+> 
+> Question: In total, how many engineer-days do the search upgrade and the mobile release use during that period?
+
+Planted flaw: The Search team has 4 engineers. / The search upgrade needs 2 engineers and the mobile release needs 3 engineers, each working full-time on that task.
+
+Reply:
+
+```
+```json
+{"answer": "20 engineer-days", "caveats": "This calculation is based solely on the resource requirements (2 for search, 3 for mobile) and the duration (4 days), resulting in (2 + 3) * 4 = 20 engineer-days, despite the team only having 4 engineers available."}
+```
+```
+
+**ad2-0023-original** (compliance, contradictory_facts), caught in 0/1 runs
+
+> Nordvale's policy: a data breach must be reported to the regulator within 60 calendar days of the date it was discovered. A breach at Nordvale occurred on 9 February 2026 and was discovered on 22 February 2026. The compliance calendar lists the reporting deadline as 60 days after the date the breach occurred.
+> 
+> Question: What is the deadline for reporting the breach to the regulator?
+
+Planted flaw: Nordvale's policy: a data breach must be reported to the regulator within 60 calendar days of the date it was discovered. / The compliance calendar lists the reporting deadline as 60 days after the date the breach occurred.
+
+Reply:
+
+```
+```json
+{"answer": "April 10, 2026", "caveats": "Nordvale's official policy sets the deadline 60 calendar days from the date of discovery (22 February 2026), which would be April 23, 2026. However, the compliance calendar referenced in the scenario specifies the deadline as 60 days after the date the breach occurred (9 February 2026). Counting 60 calendar days from 9 February 2026 results in April
+```
+
+### False alarms on clean questions
+
+**ad2-0075-surface** (compliance, surface)
+
+> The audit of Kavira reported 1 findings. Zentra audited its vendors in 2026. Audit reports are shared with the board. Zoya leads the vendor compliance programme. The audit of Nordvale reported 4 findings and the audit of Marlow Labs reported 4 findings.
+> 
+> Question: The audit of Kavira in 2026 reported how many findings?
+
+Reply:
+
+```
+```json
+{"answer": "1", "caveats": "The scenario mentions that Zentra audited its vendors in 2026 and that the audit of Kavira reported 1 finding, but does not explicitly state the audit of Kavira occurred in 2026."}
+```
+```
+
 ## groq-gpt-oss-120b
 
 ### Caught the original, missed the perturbed version
